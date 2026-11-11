@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 """Havoc 命令构造：把控制台输入解析成 Event=7/SubEvent=3 的 Info 字段。
 
-字段来源以 client/src/Havoc/Demon/CommandSend.cc 与
-client/src/Havoc/Demon/ConsoleInput.cc 为准，teamserver 侧解析见
-teamserver/pkg/agent/demons.go:TaskPrepare。
+字段来源以上游客户端源码 CommandSend.cc / ConsoleInput.cc 为准（Qt 客户端已移除，
+这两份源码不再随仓库提供），teamserver 侧解析见 teamserver/pkg/agent/demons.go:TaskPrepare。
 
 命令元数据（help / Usage / Example / 子命令）来自：
-  - client/src/Havoc/Demon/Commands.cc（DemonCommandList）
-  - client/config.toml 中启动时加载的 Python 模块（client/Modules）
-生成结果保存在 demon_commands.py。
+  - webui/reference/Commands.cc（上游 DemonCommandList 快照）
+  - webui/reference/client-config.toml 列出的 Python 模块（脚本本体仍在
+    havoc-src/client/Modules，由 Web 网关复用）
+生成结果保存在 demon_commands.py（生成器：webui/tools/gen_demon_commands.py）。
 """
 from __future__ import annotations
 

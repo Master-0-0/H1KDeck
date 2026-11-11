@@ -198,4 +198,15 @@ cd webui
 python3 cmd_matrix_test.py                      # 全量实测，结果写到 data/cmd_matrix.json
 python3 cmd_matrix_report.py                   # 生成本文档
 python3 cmd_matrix_test.py --only lin --limit 20  # 只测 Linux 前 20 条
+python3 cmd_matrix_test.py --only lin --timeout 10 --out /tmp/lin.json
+python3 cmd_matrix_test.py --only win --win 2c67a896,2d96d638 --timeout 12 --out /tmp/win.json
 ```
+
+测量口径（2026-11-11 加固）：
+
+- 心跳滞后（`last_seen_ts` 距今 ≥60s 或 `health=dead`）的会话会被跳过，避免每条命令
+  白等一个 `--timeout`（显式 `--lin` 会话仍按指定值使用）；
+- 用例执行前先探测常驻 Python 宿主是否空闲（`/api/python/repl` 往返 <2s），宿主积压时
+  先等它排空再计时——模块命令（BOF）在宿主里是**全局串行**的，否则队列延迟会被误判成
+  「无响应」（典型：`bofbelt` 在 Linux 上等回调超时）；
+- 出现「无响应」时按候选会话列表继续切换；候选耗尽才记 `未测(会话阻塞)`。

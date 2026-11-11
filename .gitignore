@@ -4,6 +4,9 @@
 # 工具链与依赖（体积大，可按需重新获取）
 /toolchain/
 
+# 移除 Qt 客户端前的备份（体积大，仅本地保留）
+/backup/
+
 # 运行时产物
 /logs/
 /payloads-out/

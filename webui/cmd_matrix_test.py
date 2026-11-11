@@ -237,6 +237,16 @@ class Runner:
         await self.sync()
         return True
 
+    async def ensure_alive(self) -> bool:
+        """jammed 后确认当前会话还能用；不能用就继续切下一个候选。"""
+        if not self.jammed:
+            return True
+        while True:
+            if await self.alive():
+                return True
+            if not await self.switch():
+                return False
+
     async def _poll(self, t0: float, timeout: float) -> tuple[str | None, str]:
         first, chunks, quiet = None, [], 0.0
         while time.time() - t0 < timeout:
@@ -263,6 +273,27 @@ class Runner:
                     break
         return first, "\n".join(chunks).strip()
 
+    async def wait_host(self, limit: float = 180.0) -> float:
+        """python 模块命令走常驻宿主（全局串行）：宿主积压时先等它排空。
+
+        否则「宿主队列延迟」会被记成「无响应」，掩盖命令本身的真实可用性
+        （典型场景：Windows 才支持的 BOF 在 Linux 上让宿主等到回调超时）。
+        """
+        t_start = time.time()
+        while time.time() - t_start < limit:
+            t0 = time.time()
+            try:
+                async with self.s.post(f"{BASE}/api/python/repl",
+                                       json={"code": "print('matrix-probe')"}) as r:
+                    await r.read()
+            except Exception:
+                await asyncio.sleep(1.0)
+                continue
+            if time.time() - t0 < 2.0:
+                return time.time() - t_start
+            await asyncio.sleep(1.0)
+        return time.time() - t_start
+
     async def send(self, line: str) -> tuple[str, str]:
         await self.sync()
         t0 = time.time()
@@ -287,10 +318,16 @@ async def sweep(runner: Runner, cases, key: str, rows: dict, lock: asyncio.Lock)
             row[f"{key}_status"] = "跳过"
             row[f"{key}_out"] = SKIP_REASON.get(name, "破坏性/不适用")
             continue
-        if runner.jammed and not await runner.alive():
+        if runner.jammed and not await runner.ensure_alive():
             row[f"{key}_status"] = "未测(会话阻塞)"
             row[f"{key}_out"] = "前一条命令把会话占住，未继续"
+            async with lock:
+                print(f"{name:24s} {key}=未测(会话阻塞，无可用候选)", flush=True)
             continue
+        waited = await runner.wait_host()
+        if waited >= 2.0:
+            async with lock:
+                print(f"{name:24s} {key}=等待宿主排空 {waited:.0f}s", flush=True)
         t0 = time.time()
         kind, text = await runner.send(line)
         status = classify(kind, text)
@@ -329,8 +366,28 @@ async def main() -> int:
                     if not x.get("platform") and "Linux" not in str(x.get("os", ""))])
         lin_ids = ([args.lin] if args.lin else
                    [x["id"] for x in sessions if str(x.get("platform", "")).lower() == "linux"])
+
+        def only_fresh(ids: list[str], label: str) -> list[str]:
+            """丢掉心跳滞后的会话：它们只会让每条命令白等一个 timeout。"""
+            keep: list[str] = []
+            by_id = {s["id"]: s for s in sessions}
+            for sid in ids:
+                item = by_id.get(sid)
+                if not item:
+                    print(f"[{label}] 会话 {sid} 不在线，跳过", flush=True)
+                    continue
+                age = time.time() - float(item.get("last_seen_ts") or 0)
+                if item.get("health") == "dead" or age >= 60:
+                    print(f"[{label}] 会话 {sid} 心跳滞后 {age:.0f}s"
+                          f"（health={item.get('health')}），跳过", flush=True)
+                    continue
+                keep.append(sid)
+            return keep
+
+        win_ids = only_fresh(win_ids, "win")
+        lin_ids = only_fresh(lin_ids, "lin") if not args.lin else lin_ids
         if not win_ids or not lin_ids:
-            raise SystemExit("需要至少一个 Windows 与一个 Linux 会话")
+            raise SystemExit("需要至少一个 Windows 与一个 Linux 会话（心跳 60s 内）")
         print(f"windows={win_ids} linux={lin_ids}", flush=True)
 
         cases = sorted(CASES, key=lambda c: (c[4], c[0]))

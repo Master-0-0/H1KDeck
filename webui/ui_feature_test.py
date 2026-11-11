@@ -136,9 +136,12 @@ async def main() -> int:
     await ev(cdp, "closeModal()")
 
     # 控制台 / 右键 / 文件 / 进程
+    # 控制台用例断言 Windows 的 whoami 回显，优先选健康 Windows 会话
     demon = await ev(cdp, """(() => {
         const rows = Array.from(document.querySelectorAll('#sessions-body tr'));
-        const r = rows.find(x => (x.querySelector('.status-word')||{}).textContent === 'healthy');
+        const healthy = rows.filter(x => (x.querySelector('.status-word')||{}).textContent === 'healthy');
+        const win = healthy.find(x => /windows/i.test(x.innerText || ''));
+        const r = win || healthy[0];
         return r ? r.getAttribute('data-id') : null;
     })()""")
     check("选择健康会话", bool(demon), demon or "")

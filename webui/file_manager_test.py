@@ -81,34 +81,55 @@ class API:
                 return r.status, {"raw": await r.text()}
 
 
-def pick_sessions(sessions: list[dict]) -> dict[str, dict]:
-    pinned_linux = os.environ.get("HAVOC_FM_LINUX", "")
-    pinned_windows = os.environ.get("HAVOC_FM_WINDOWS", "")
-    out: dict[str, dict] = {}
-    for s in sessions:
-        text = f"{s.get('platform') or ''} {s.get('os') or ''}".lower()
-        if pinned_linux and s.get("id") == pinned_linux:
-            out["linux"] = s
-        if pinned_windows and s.get("id") == pinned_windows:
-            out["windows"] = s
-    if not out:
+def session_fresh(s: dict, max_age: float = 60.0) -> bool:
+    """按最近心跳判断会话是否可用（health 字段有滞后，以 last_seen_ts 为准）。"""
+    if str(s.get("health") or "").lower() == "dead":
+        return False
+    ts = s.get("last_seen_ts")
+    try:
+        ts = float(ts)
+    except (TypeError, ValueError):
+        return str(s.get("health") or "").lower() == "healthy"
+    return (time.time() - ts) < max_age
+
+
+def pick_sessions(sessions: list[dict], max_age: float = 60.0) -> dict[str, list[dict]]:
+    """每个平台返回候选列表（按心跳从新到旧）。
+
+    HAVOC_FM_LINUX / HAVOC_FM_WINDOWS 固定会话时只保留该会话；
+    否则过滤掉心跳超过 max_age 的会话，避免选到「health=healthy 但已滞后」的会话后连续 504。
+    """
+    pinned = {"linux": os.environ.get("HAVOC_FM_LINUX", ""),
+              "windows": os.environ.get("HAVOC_FM_WINDOWS", "")}
+    out: dict[str, list[dict]] = {}
+    for platform, pinned_id in pinned.items():
+        if pinned_id:
+            for s in sessions:
+                if s.get("id") == pinned_id:
+                    out[platform] = [s]
+                    break
+            continue
+        candidates: list[dict] = []
         for s in sessions:
-            if s.get("health") != "healthy":
-                continue
             text = f"{s.get('platform') or ''} {s.get('os') or ''}".lower()
-            if "linux" in text and "linux" not in out:
-                out["linux"] = s
-            elif "windows" in text and "windows" not in out:
-                out["windows"] = s
+            if platform not in text or not session_fresh(s, max_age):
+                continue
+            candidates.append(s)
+        if candidates:
+            candidates.sort(key=lambda x: float(x.get("last_seen_ts") or 0), reverse=True)
+            out[platform] = candidates
     return out
 
 
-async def run_case(api: API, s: dict, platform: str) -> None:
+async def run_case(api: API, s: dict, platform: str) -> tuple[int | None, bool]:
+    """跑一个平台的用例，返回 (首条命令的 HTTP 状态, 是否全部通过)。"""
     sid = s["id"]
     tag = f"{platform}({sid})"
     base = (f"/tmp/havoc-fm-{stamp()}" if platform == "linux"
             else rf"C:\Windows\Temp\havoc-fm-{stamp()}")
     sep = "/" if platform == "linux" else "\\"
+    mark = len(RESULTS)
+    first_status: int | None = None
 
     def p(*parts: str) -> str:
         return base + sep + sep.join(parts)
@@ -116,10 +137,14 @@ async def run_case(api: API, s: dict, platform: str) -> None:
     parent = "/tmp" if platform == "linux" else r"C:\Windows\Temp"
 
     # 清理可能残留的同名目录
-    await api.post(f"/api/sessions/{sid}/files/remove", {"path": base, "recursive": True})
+    try:
+        await api.post(f"/api/sessions/{sid}/files/remove", {"path": base, "recursive": True})
+    except Exception:
+        pass
 
     try:
         status, data = await api.post(f"/api/sessions/{sid}/files/mkdir", {"path": base})
+        first_status = status
         record(status == 200 and data.get("ok"), f"{tag} 新建目录", f"{status} {data.get('message','')[:80]}")
         status, data = await api.post(f"/api/sessions/{sid}/files/mkdir", {"path": base})
         record(status == 409, f"{tag} 重复新建目录返回 409", str(status))
@@ -182,6 +207,26 @@ async def run_case(api: API, s: dict, platform: str) -> None:
         except Exception:
             pass
 
+    new = RESULTS[mark:]
+    passed = sum(1 for x in new if x[0] == "PASS")
+    return first_status, bool(new) and passed == len(new)
+
+
+async def run_platform(api: API, platform: str, candidates: list[dict]) -> bool:
+    """按候选顺序尝试：首条命令 5xx（多为心跳滞后导致 504）时自动切到下一个会话。"""
+    for idx, s in enumerate(candidates):
+        mark = len(RESULTS)
+        first_status, ok = await run_case(api, s, platform)
+        if ok:
+            return True
+        if first_status in (502, 503, 504) and idx + 1 < len(candidates):
+            print(f"会话 {s['id']} 首条命令返回 {first_status}，"
+                  f"切换到 {candidates[idx + 1]['id']}", flush=True)
+            del RESULTS[mark:]
+            continue
+        return False
+    return False
+
 
 async def main() -> int:
     jar = aiohttp.CookieJar(unsafe=True)
@@ -198,11 +243,12 @@ async def main() -> int:
             return 2
         targets = pick_sessions(sessions)
         if not targets:
-            print("没有可用于测试的 Linux/Windows 会话", file=sys.stderr)
+            print("没有可用于测试的 Linux/Windows 会话（心跳 60s 内）", file=sys.stderr)
             return 2
-        print("目标会话：" + ", ".join(f"{k}={v['id']}" for k, v in targets.items()))
-        for platform, s in targets.items():
-            await run_case(api, s, platform)
+        print("目标会话：" + ", ".join(
+            f"{k}={','.join(x['id'] for x in v)}" for k, v in targets.items()))
+        for platform, candidates in targets.items():
+            await run_platform(api, platform, candidates)
 
     passed = sum(1 for x in RESULTS if x[0] == "PASS")
     total = len(RESULTS)

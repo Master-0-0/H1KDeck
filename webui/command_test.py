@@ -169,6 +169,12 @@ async def main() -> int:
         check("存在健康会话", bool(healthy), f"{len(healthy)} 个")
         if not healthy:
             return finish()
+        # 本脚本断言的是 Windows 语义（Directory of / Token Vault / LogonId ...），
+        # 显式挑一个健康 Windows 会话，避免快照顺序变化时命中 Linux 会话。
+        windows = [s for s in healthy
+                   if "windows" in f"{s.get('platform') or ''} {s.get('os') or ''}".lower()]
+        if windows:
+            healthy = windows + [s for s in healthy if s not in windows]
         demon = healthy[0]["id"]
 
         status, body = await send(session, demon, "definitely-not-a-command")

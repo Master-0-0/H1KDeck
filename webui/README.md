@@ -7,8 +7,12 @@
 **TCP / KCP / UDP / WebSocket / DNS / DoH / DoT / OSS 八种加密传输监听器**
 （VShell 风格，AES-256-GCM + Vkey/EncryptSalt，配套 Go 中继器）。
 
-**仅用于已获得明确书面授权的安全测试环境。** Qt 客户端、teamserver 与 9901 暂存链路都不改动；
+**仅用于已获得明确书面授权的安全测试环境。** teamserver 与 9901 暂存链路都不改动；
 webui 是一个独立进程（默认 `:8081`）。
+
+> **2026-11-11：Qt 客户端已从仓库移除，webui 现在是唯一的操作界面。**
+> `havoc-src/client/Modules` 被本网关复用为模块命令库（77 条命令 + 156 个 BOF `.o`），**不要删除**；
+> 命令表来源快照在 `webui/reference/`，生成器仍可用 `python3 tools/gen_demon_commands.py` 重跑。
 
 ![主界面](docs/main.png)
 
@@ -63,12 +67,12 @@ webui 是一个独立进程（默认 `:8081`）。
    ▼
 webui 网关（Python 3 + aiohttp，:8081）
    ├── 一条 WSS 连接 → Havoc Teamserver（操作员 Neo）
-   ├── Python 子进程（SDK / REPL / 脚本命令）
+   ├── Python 子进程（SDK / REPL / 脚本命令；模块脚本来自 havoc-src/client/Modules）
    └── 本地数据：data/loot、data/payloads、data/extensions
-   ▲
-   │  同一套广播
-Qt 客户端（操作员 5pider，可同时在线）
 ```
+
+> Qt 客户端已移除：原先「同一套广播给 Qt + Web」的第二个消费者不再存在，
+> 网关是 teamserver 的唯一操作员连接（`Neo`）。
 
 - 网关只登录**一次** teamserver，缓存会话/监听器/事件/聊天/战利品/载荷构建状态。
 - 网关断线自动重连；浏览器断线自动重连；登录态用 HMAC 签名 cookie，网关重启无需重新登录。
@@ -161,9 +165,11 @@ cd /home/kali/桌面/Havoc/webui
 
 ### 4.1 控制台
 
-命令构造与 `client/src/Havoc/Demon/ConsoleInput.cc`、`CommandSend.cc` 一致；输出按任务归因。
+命令构造与上游客户端 `ConsoleInput.cc`/`CommandSend.cc` 一致（客户端已移除，语义以 teamserver
+`TaskPrepare` 与历史快照为准）；输出按任务归因。
 
-- **help 全量表**：与 Qt 客户端结构一致（108 条 Demon 基线：35 条静态命令 + 73 条模块命令），
+- **help 全量表**：结构对齐上游客户端（108 行 = 35 条静态 + 73 条模块；
+  模块定义共 77 条，子命令不单列，模块组 `jump-exec` 单列一行），
   列位置 `Command/Type/Description = 2/27/40`，按命令名排序；加载脚本后会追加脚本命令。
   Description 列已中文化（命令名、Type、Usage/Example 保持客户端原文）。
 - **`help <command> [sub]`**：输出客户端一致的 Description / Behavior / Usage / Example，
@@ -172,7 +178,8 @@ cd /home/kali/桌面/Havoc/webui
   `ps`、`dir/ls`、`cd`、`pwd`、`cat/type`、`download`、`upload`、`mkdir`、`remove`、`cp`、`mv`、
   `screenshot`、`inline-execute`、`dotnet`、`dll`、`shellcode`、`token`、`config`、`net`、`pivot`、
   `rportfwd`、`socks`、`transfer`、`luid`、`klist`、`purge`、`ptt`、`exit`、`clear`。
-- **模块命令**：`client/config.toml` 中 15 个脚本注册的命令（whoami/arp/ipconfig/env/netstat、
+- **模块命令**：`webui/reference/client-config.toml` 列出的 15 个脚本（脚本本体在
+  `havoc-src/client/Modules`）注册的命令（whoami/arp/ipconfig/env/netstat、
   netGroupList、reg_*、sc_*、schtasks*、RemoteOps、nanodump、jump-exec 等）由 Web SDK
   在网关侧执行，BOF 仍经 teamserver 下发；`dotnet execute`、`powerpick` 的 `DllSpawn` 已支持。
 - **文件参数**：`inline-execute` / `dll` / `shellcode` / `dotnet inline-execute` / `upload`
@@ -461,7 +468,8 @@ webui/
 ├── state.py              # 协议解码与状态（会话/监听器/事件/聊天/文件/进程/战利品/载荷/BOF）
 ├── filemanager.py        # 文件管理器：会话 FS 增删改查、空目录兼容、递归 shell 操作
 ├── commands.py           # 控制台命令构造（静态命令 + help + 文件参数）
-├── demon_commands.py     # 命令元数据（自动生成：Commands.cc + client/Modules）
+├── demon_commands.py     # 命令元数据（自动生成：reference/ + client/Modules）
+├── reference/            # 命令表快照（Commands.cc、client-config.toml）
 ├── demon_help_zh.py      # help/子命令 Description 中文翻译
 ├── tools/
 │   └── gen_demon_commands.py  # 重新生成命令元数据
@@ -663,6 +671,13 @@ Windows 专有语义（AD CS/Kerberos/注册表/服务/计划任务/令牌/注�
 `pivot`（SMB）/`transfer`/`job`/`config` 等）在 Linux 上没有等价实现，
 Web 控制台会标注「仅 Windows」，Qt 客户端直接下发时由 agent 回显不支持。
 
+其中 **`netshares` / `cacls` / `netLocalGroupList` / `netLclGrpLstMmbrs`** 对应的
+CommandID 在 Linux Demon 上完全不回包（会一直占住会话到超时），因此改为**网关侧短路**
+（`linux_compat.WINDOWS_ONLY`，不下发）：`POST /api/sessions/{sid}/command` 直接返回
+`400 {"error": "not_supported", ...}`，控制台 0 秒内出现
+`<命令>: Windows 原生命令，Linux Demon 无等价实现 (not supported by the Linux demon)`。
+`LINUX_NATIVE` 里已有的改写（`net users`、`whoami` 等）不受影响。
+
 ![Linux 控制台](docs/linux-console.png)
 ![Linux 原生命令](docs/linux-native.png)
 
@@ -693,8 +708,14 @@ Web 控制台会标注「仅 Windows」，Qt 客户端直接下发时由 agent �
    DNS/DoH/DoT 为中继器直连监听器；OSS 为自建 PUT/GET 端点（未实现云厂商签名）。
    传输监听器不直接生成 Demon 载荷，需按 [docs/TRANSPORTS.md](docs/TRANSPORTS.md)
    用「带代理的 HTTP 监听器」生成。
-3. **任务归因是启发式**（Console 消息不带 TaskID）。
-4. **图形化扩展（havocui）不能在 Web 运行**：可安装/查看，但需 Qt 客户端加载。
+3. **任务归因是启发式**（Console 消息不带 TaskID）：`shell`/模块命令可能停在
+   `status=sent`，输出也不会挂到对应 Task 上。`havoc_run_command` 因此在等待期间
+   同时轮询 `/api/sessions/{sid}/console`：任务未 `completed` 但本命令发起后已有新的
+   控制台输出时，用控制台文本兜底并置 `completed=true`、`completed_by="console"`
+   （正常按任务完成时为 `completed_by="task"`）。模块 BOF（如 `ipconfig`）的迟到输出
+   可能落到下一条命令的等待窗口里，这是归因启发式的固有边界。
+4. **图形化扩展（havocui）无法运行**：Qt 客户端已移除，网关内的 `havocui` 模块直接抛
+   `ImportError`；扩展可安装/查看源码，但只能改写为 CLI 脚本或基于 pysdk 重新实现。
 5. **第三方 Agent**：`Agent` 只提供元数据与 `ConsoleWrite`；`Agent.Command`（第三方命令表）
    不在本批范围，调用会明确抛 `NotImplementedError`。`GetAgents()` 固定返回 `["Demon"]`。
 6. **Python SDK 的 Web 限制**：`LoadScript` 只允许 `data/extensions` 或
@@ -742,7 +763,7 @@ Web 控制台会标注「仅 Windows」，Qt 客户端直接下发时由 agent �
   - 上传 `env.x64.o` 后 `inline-execute` 回显；
 - `download` 实测：teamserver 落地文件复制到 `data/loot/<demon>/`，战利品「下载」可点击保存；
 - `screenshot` 实测落地并显示缩略图；`dotnet execute` / `jump-exec psexec` 模块路由与参数错误提示；
-- Qt 客户端（5pider）与网关（Neo）同时在线不互踢；
+- （历史）Qt 客户端与网关同时在线不互踢——Qt 客户端已于 2026-11-11 移除；
 - **Linux Exe 载荷（2026-11-10）**：x64/x86 均生成并上线（`690b6bc2`/`4bd685d9`），
   `shell uname -r`、`pwd/ls/cat`、`download/upload`、`proc list/grep/kill`、`checkin`、`sleep`
   实测通过；Linux 会话的 `shell` 自动走 `/bin/sh -c`；Windows 构建与上述脚本无回归。
@@ -779,6 +800,45 @@ Web 控制台会标注「仅 Windows」，Qt 客户端直接下发时由 agent �
     initialize 200，恢复 0 后 8081 `/mcp` 200，`config.json → mcp.port` 最终回到 0；
   - 截图：`docs/mcp-admin-running.png`、`docs/mcp-admin-stopped.png`、
     `docs/mcp-admin-port.png`、`docs/mcp-admin-tools.png`。
+- **本轮回归修复（2026-11-11，只动 `webui/`）**：
+  - `disconnect_test.py` 重写：不再断言从未存在过的状态栏 DOM（`#conn-text`/`#conn-pill`/
+    `#status-ws`/`#status-conn`），改用 `fetch('/api/health')`、`fetch('/api/me')`、
+    `#sessions-body tr` 行数、`#login-view` 是否隐藏；另加「页面未被刷新」
+    （`window.__disconnectProbe`）与 `/api/status.ws_clients >= 1` 证明是 WS 自动重连。
+    同时修正 `__file__` 目录解析（旧脚本把 `stop-webui.sh` 路径拼成
+    `disconnect_test.py/stop-webui.sh`，网关其实从未被停过）。→ **PASS（13 项）**；
+  - `mcp_tools.havoc_run_command` 完成判定：`wait` 循环里同时轮询控制台，任务停在
+    `status=sent` 但本命令发起后已有新输出时，用控制台文本兜底并返回
+    `completed=true`、`completed_by="task"|"console"`。live 实测
+    `command="shell echo probe", wait_seconds=15`：`2d96d638` 走任务归因
+    （`completed_by="task"`），`7f207ab4` 走控制台兜底（`completed_by="console"`），
+    两次 `completed=true` 且 `output` 含 `probe`；`mcp_test.py --live` **47/47**；
+  - `file_manager_test.py` 选会话：先按 `last_seen_ts` 距今 <60s 过滤（health 有滞后），
+    按心跳从新到旧排序；首条命令返回 502/503/504 时自动切下一个候选。`HAVOC_FM_*`
+    覆盖仍然优先。不 pin 会话连跑 2 次均 **30/30**；
+  - `linux_compat.WINDOWS_ONLY`：Linux 会话上 `netshares`/`cacls`/`netLocalGroupList`/
+    `netLclGrpLstMmbrs` 在网关侧短路（返回 400 + `not supported by the Linux demon`，
+    <1s，不再下发占住会话）；`LINUX_NATIVE` 已有改写不受影响，`linux_agent_test.py` **20/20**；
+  - 测试选会话口径：`acceptance.py` / `command_test.py` / `ui_feature_test.py` 显式优先
+    健康 Windows 会话（快照顺序变化时不再误选 Linux 会话导致 Windows 语义断言失败）；
+    `acceptance.py` 与 `reconnect_test.py` 修正 `__file__` 目录解析，网关重启步骤真正执行
+    （此前 `start/stop-webui.sh` 路径拼错，是空跑）。
+- **2026-11-11 收尾复跑（全绿）**：`acceptance.py` **15/15**（含真实网关重启）、
+  `command_test.py` **34/34**、`cmd_help_test.py` **6/6**、`ui_feature_test.py` **15/15**、
+  `gap_features_test.py` **42/42**、`file_manager_test.py` **30/30**（不 pin 会话）、
+  `file_manager_ui_test.py` **13/13**、`mcp_test.py --live` **47/47**、
+  `mcp_admin_test.py` **92/92**、`sdk_contract_test.py` **35/35**、
+  `delivery_chain_test.py` **19/19**、`service_listener_test.py` **25/25**、
+  `transport_test.py` **8/8**、`transport_relay_test.py` **8/8**、
+  `linux_agent_test.py` **20/20**、`reconnect_test.py` **PASS**、`disconnect_test.py` **PASS**；
+  命令矩阵（`--only lin --timeout 10` / `--only win --timeout 12`）：
+  **Linux** 无响应 **0**、不支持 46（42 条 Windows 专有 + 本轮新增短路的 4 条）、
+  可用 39、无失败；**Windows** 可用 **75**、无响应 3（`bofbelt`/`bofenvcb`/`netview`
+  三个长 BOF）、未测 0、无失败。矩阵脚本另加了「跳过心跳滞后会话」与
+  「模块命令前先等常驻 Python 宿主排空」，避免把队列延迟记成「无响应」。
+  > 环境说明：原指定的 Windows 靶机 `2c67a896` 在本轮中途离线（`health=stale`，
+  > 心跳停在 15:56），测试改用同为 `192.168.121.1` 的健康会话 `2d96d638`
+  > （`file_manager_test` 会自动按心跳选择；矩阵用 4 个 Windows 会话轮换）。
 
 ## 10. MCP 接入（Web 全部功能对外调用）
 
@@ -803,6 +863,8 @@ MCP（Model Context Protocol）层把 webui 的全部 HTTP 能力映射为工具
 
 共 **69 个工具**；另有 15 个只读资源与 3 个提示词（见 10.6）。
 `havoc_run_command` 的 `wait_seconds` 可等待任务完成并直接返回输出，适合 Agent 串行编排。
+完成判定同时看任务状态与控制台新行（返回值带 `completed_by`：`task` / `console`），
+避免「控制台已有回显但工具返回 `completed=false`、`output=""`」。
 
 ### 10.2 MCP 管理页（运行时启停）
 

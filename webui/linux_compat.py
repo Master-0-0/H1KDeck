@@ -27,11 +27,24 @@ Linux Demon 无法执行 COFF 对象，因此在网关侧把语义等价、在 L
 
 其余 Windows 专有命令（AD/Kerberos/registry/service/token/injection/.NET/BOF/WMI…）
 没有 Linux 语义，help 中会标注「仅 Windows」，下发时由 agent 回显不支持。
+其中 netshares / cacls / netLocalGroupList / netLclGrpLstMmbrs 对应的 CommandID 在
+Linux Demon 上完全不回包（会话会一直等到超时），因此由网关直接短路（`WINDOWS_ONLY`）。
 """
 from __future__ import annotations
 
 import shlex
 from typing import Optional
+
+# Windows 原生命令：语义只存在于 Windows（SMB 共享 / NTFS ACL / NetLocalGroup API），
+# Linux Demon 收到对应 CommandID 后不会回包，客户端只能一直等到超时并占住会话。
+# 这 4 条在网关侧直接短路（不下发），返回「not supported by the Linux demon」，
+# 与 agent 对其他 Windows 专有命令的回显口径一致。
+WINDOWS_ONLY = {
+    "netshares",
+    "cacls",
+    "netlocalgrouplist",
+    "netlclgrplstmmbrs",
+}
 
 # help 中在 Linux 上“有真实实现”的命令（agent 原生或由本层改写）
 LINUX_NATIVE = {
@@ -131,6 +144,13 @@ def shell_command(line: str, argv: list[str]) -> Optional[str]:
     return None
 
 
+def unsupported_message(command: str) -> str:
+    """Linux 会话上 Windows 原生命令的统一回显（口径同 agent 的 0x14 回包）。"""
+    name = (command or "").strip() or "command"
+    return (f"{name}: Windows 原生命令，Linux Demon 无等价实现"
+            " (not supported by the Linux demon)")
+
+
 def plan(session: dict, line: str) -> Optional[dict]:
     """返回 {"kind": "shell"|"proc"|"error", "line": ..., "note": ..., "message": ...}。"""
     if not is_linux(session):
@@ -145,6 +165,11 @@ def plan(session: dict, line: str) -> Optional[dict]:
     if not argv:
         return None
     cmd = argv[0].lower()
+
+    # Windows 原生命令：网关侧短路，不下发（否则 agent 不回包，会话被占满超时）
+    if cmd in WINDOWS_ONLY:
+        message = unsupported_message(argv[0])
+        return {"kind": "error", "line": line, "note": message, "message": message}
 
     if cmd == "tasklist":
         return {"kind": "proc", "line": "proc list", "note": "Linux：proc list（解析 /proc）",

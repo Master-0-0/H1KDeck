@@ -4,8 +4,9 @@
 
 生成器：webui/tools/gen_demon_commands.py
 数据来源：
-- client/src/Havoc/Demon/Commands.cc（DemonCommandList，35 条）
-- client/config.toml 中启动时加载的 15 个 Python 模块（RegisterCommand/RegisterModule）
+- webui/reference/Commands.cc（上游 DemonCommandList 快照，35 条）
+- webui/reference/client-config.toml 列出的 15 个 Python 模块
+  （脚本本体在 havoc-src/client/Modules，RegisterCommand/RegisterModule）
 
 数据只描述命令；数据包构造见 commands.py。
 """

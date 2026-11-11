@@ -4,6 +4,11 @@ Havoc Framework 的 Web 控制台：在浏览器里完成监听器、载荷生�
 进程操作、战利品查看和团队协作。网关把浏览器请求转成 Teamserver 的 JSON over WebSocket 协议，
 因此无需安装 Qt 客户端，也不必修改 Teamserver / Demon。
 
+> **2026-11-11 变更：Qt 客户端已从本仓库移除**，只保留 Teamserver + Web 控制台。
+> `havoc-src/client/Modules`（Python 模块 + BOF 对象文件）作为 Web 端的模块命令库保留，
+> 模块命令（help 表 73 行，`REGISTERED_COMMANDS` 注册 77 条；`netview`、`kerberoast`、`nanodump` 等）依赖它，**不要删除**。
+> 命令表来源固化在 `webui/reference/`，移除前的 Qt 客户端完整备份见 `backup/qt-client-20261111.tar.gz`。
+
 上游项目：[HavocFramework/Havoc](https://github.com/HavocFramework/Havoc)（部署版本 **0.7 / Bites The Dust**）。
 
 ![Web 控制台主界面](webui/docs/main.png)
@@ -134,9 +139,9 @@ BOF 回调等接口，注册的命令可直接在会话控制台调用。
 
 ![会话右键菜单](webui/docs/session-menu.png)
 
-> 全部截图位于 `webui/docs/`，内容均为 Web 控制台界面。与 Qt 客户端的逐屏对照图见
-> `webui/docs/ui-compare-*.png`（每张图上方标注 `WEB`、下方标注 `CLIENT`，上为 Web 控制台、
-> 下为 Qt 客户端）；`ui-parity-sheet.png` 为 13 屏功能总览拼图（同为 Web 控制台）。
+> 全部截图位于 `webui/docs/`，内容均为 Web 控制台界面。`ui-compare-*.png` 是移除 Qt 客户端前
+> 留下的历史对照图（上方 `WEB`、下方 `CLIENT`，下为已移除的 Qt 客户端）；
+> `ui-parity-sheet.png` 为 13 屏功能总览拼图（同为 Web 控制台）。
 
 ---
 
@@ -148,8 +153,8 @@ BOF 回调等接口，注册的命令可直接在会话控制台调用。
 
 | 组件 | 位置 | 说明 |
 | --- | --- | --- |
-| Havoc 源码与二进制 | `havoc-src/` | 独立 git 仓库，需编译出 `havoc-src/havoc`（Teamserver）；`client/Havoc`（Qt 客户端）为可选 |
-| 本地工具链 | `toolchain/` | Go、CMake、Qt5、Python venv，仅在重新编译时需要 |
+| Havoc 源码与二进制 | `havoc-src/` | 独立 git 仓库，需编译出 `havoc-src/havoc`（Teamserver）；Qt 客户端已移除，`client/Modules` 保留给 Web 端复用 |
+| 本地工具链 | `toolchain/` | Go、CMake、Python venv，仅在重新编译时需要（Qt5 已随客户端移除） |
 | 运行数据 | `webui/data/`、`webui/run/` | 战利品、载荷、MCP 令牌与密钥，首次启动自动生成 |
 | 载荷产物 | `payloads-out/` | 一键上线投递目录 |
 
@@ -173,17 +178,17 @@ cd /home/kali/桌面/Havoc
 
 ```bash
 ./start-teamserver.sh       # 前台运行 Teamserver，Ctrl+C 停止
-./start-client.sh           # 启动 Qt 客户端（可选）
 cd webui && ./start-webui.sh  # 后台启动 Web 控制台（含健康检查）
 ```
 
 | 服务 | 地址 | 凭据 |
 | --- | --- | --- |
 | Web 控制台 | <http://127.0.0.1:8081/> | `admin` / `havoc1234`（`webui/config.json`） |
-| Teamserver | `wss://127.0.0.1:40056` | 供 Qt 客户端（可选）连接：`5pider` / `password1234` |
+| Teamserver | `wss://127.0.0.1:40056` | 供网关连接：`Neo` / `password1234`（Qt 客户端已移除，`5pider` 账号已删除） |
 | 一键上线服务 | <http://127.0.0.1:9901/> | 无 |
 
-> 用户名区分大小写；网关连接 Teamserver 使用 `Neo`，Qt 客户端使用 `5pider`，两边可同时在线不互踢。
+> 用户名区分大小写；网关以 `Neo` 连接 Teamserver。Qt 客户端移除后不再有第二个操作员连接，
+> 多浏览器共用该连接（详见 `webui/README.md` 已知限制）。
 > **默认口令仅用于本地演示，正式使用前请修改** `havoc-src/profiles/havoc.yaotl` 与 `webui/config.json`。
 
 ### 2.4 基本使用流程
@@ -248,8 +253,8 @@ Havoc/
 ├── start-all.sh               # 一键启动（幂等 + 就绪检查）
 ├── stop-all.sh                # 一键停止
 ├── start-teamserver.sh        # 单独启动 Teamserver
-├── start-client.sh            # 启动 Qt 客户端
 ├── start-stager.sh            # 单独启动暂存服务
+├── backup/                    # 移除 Qt 客户端前的完整备份（不含 client/Modules）
 ├── README-DEPLOY.md           # 完整部署记录（编译、兼容性、验证结果）
 └── HANDOFF-*.md               # 开发交接说明
 ```
@@ -293,7 +298,8 @@ python3 transport_test.py
 - **Linux Demon**：不支持 SMB pivot、令牌窃取、注入、BOF、.NET、WMI、Kerberos 等 Windows 专有语义，
   `help` 中对应命令标注「仅 Windows」；二进制约 6 MB，未做 UPX 与休眠混淆。
 - **服务端插件监听器**：不写入 Teamserver 数据库，删除不通知插件；创建时若插件未注册会返回 502。
-- **扩展商店**：图形化（havocui）扩展可安装查看，但运行仍需 Qt 客户端。
+- **扩展商店**：图形化（havocui）扩展可安装查看，但依赖 Qt 客户端进程内的 Python UI 绑定；
+  Qt 客户端移除后**无法运行**，只能改写为 CLI 脚本或用 pysdk 重新实现。
 - **拓扑图**：会话列表来自 Teamserver 快照；若另一个长期在线的客户端错过了 `NewSession`，
   两边显示可能不一致，重连该客户端即可对齐。
 - **安全**：网关默认监听 `0.0.0.0:8081` 仅为方便同网段访问，**不要暴露到办公网或公网**；

@@ -2,13 +2,14 @@
 # -*- coding: utf-8 -*-
 """验收脚本：浏览器登录态在网关重启后依然有效，WS 自动重连并拿到快照。"""
 import asyncio
+import pathlib
 import subprocess
 import sys
 
 import aiohttp
 
 BASE = "http://127.0.0.1:8081"
-HERE = __file__.rsplit("/", 1)[0]
+HERE = pathlib.Path(__file__).resolve().parent
 
 
 async def ws_snapshot(session, timeout=15):
@@ -32,9 +33,9 @@ async def main() -> int:
         print("before restart: sessions=%d conn=%s" % (len(snap["sessions"]), snap["connection"]["state"]))
 
         print("restarting gateway ...")
-        subprocess.run(["bash", f"{HERE}/stop-webui.sh"], check=False)
+        subprocess.run(["bash", str(HERE / "stop-webui.sh")], check=False)
         await asyncio.sleep(1.5)
-        subprocess.run(["bash", f"{HERE}/start-webui.sh"], check=False)
+        subprocess.run(["bash", str(HERE / "start-webui.sh")], check=False)
 
         ok = False
         for attempt in range(1, 16):

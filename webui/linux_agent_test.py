@@ -45,7 +45,8 @@ WEB_PASS = CONFIG["web"].get("password", "havoc1234")
 TS_HOST = CONFIG["teamserver"].get("host", "127.0.0.1")
 TS_PORT = CONFIG["teamserver"].get("port", 40056)
 TS_URL = f"wss://{TS_HOST}:{TS_PORT}/havoc/"
-TS_OPERATOR = os.environ.get("HAVOC_OPERATOR", "5pider")
+# Qt 客户端已移除，profile 中只剩网关使用的操作员（默认 Neo）。
+TS_OPERATOR = os.environ.get("HAVOC_OPERATOR", CONFIG["teamserver"].get("user", "Neo"))
 TS_PASSWORD = os.environ.get("HAVOC_OPERATOR_PASSWORD", "password1234")
 LISTENER = os.environ.get("HAVOC_LISTENER", "LAN-Test")
 

@@ -484,39 +484,105 @@ def _build_tools() -> list[Tool]:
     ]
 
     async def run_command(client: "GatewayClient", args: dict) -> Any:
-        sid = str(args["sid"])
-        command = str(args["command"])
-        wait = float(args.get("wait_seconds") or 0)
-        url = f"/api/sessions/{quote(sid, safe='')}/command"
-        data = await client.request_json("POST", url, json_body={"command": command})
-        task = data.get("task") if isinstance(data, dict) else None
-        task_id = (task or {}).get("task_id")
-        if not wait or not task_id:
-            return data
         import asyncio
         import time as _time
 
+        sid = str(args["sid"])
+        command = str(args["command"])
+        wait = float(args.get("wait_seconds") or 0)
+        settle = min(max(float(args.get("settle_seconds") or 0.6), 0.0), 10.0)
+        base = f"/api/sessions/{quote(sid, safe='')}"
+
+        async def console_lines(limit: int = 400) -> list[dict]:
+            """读控制台尾部；拿不到就当作空（不打断命令下发）。"""
+            try:
+                data = await client.request_json("GET", f"{base}/console",
+                                                 params={"limit": limit})
+            except Exception:  # noqa: BLE001 - 控制台不是所有网关都实现
+                return []
+            if isinstance(data, dict):
+                return [l for l in (data.get("lines") or []) if isinstance(l, dict)]
+            return []
+
+        # Console 回包不带 TaskID，任务归因是启发式的（README 已知限制 #3）：
+        # 因此先记录「发起时刻」的控制台水位，后面用新行兜底完成判定。
+        baseline_ts = max((float(l.get("ts") or 0) for l in await console_lines(1)), default=0.0)
+
+        data = await client.request_json("POST", f"{base}/command",
+                                         json_body={"command": command})
+        task = data.get("task") if isinstance(data, dict) else None
+        task_id = (task or {}).get("task_id")
+        if not wait or not task_id:
+            out = dict(data) if isinstance(data, dict) else {"ok": True}
+            out["completed"] = bool((task or {}).get("completed"))
+            out["completed_by"] = "task" if out["completed"] else ""
+            return out
+
         deadline = _time.monotonic() + min(wait, 300.0)
         last = task
+        texts: list[str] = []
+        seen: set = set()
+        quiet_at: Optional[float] = None
+        completed_by = ""
+
+        def collect(lines: list[dict]) -> bool:
+            """收集水位之后的新控制台行；返回是否有新内容。"""
+            added = False
+            for line in lines:
+                if float(line.get("ts") or 0) <= baseline_ts:
+                    continue
+                kind = str(line.get("kind") or "")
+                text = str(line.get("text") or "")
+                if not text or kind in ("prompt", "task"):
+                    # prompt 是本条命令自身回显；task 是模块的「Tasked demon to ...」回执
+                    continue
+                if kind == "info" and text.startswith(("[*]", "Send Task", "Received Output",
+                                                       "Tasked")):
+                    continue
+                key = (line.get("ts"), kind, text)
+                if key in seen:
+                    continue
+                seen.add(key)
+                texts.append(text)
+                added = True
+            return added
+
         while _time.monotonic() < deadline:
             await asyncio.sleep(0.4)
-            listing = await client.request_json("GET", f"/api/sessions/{quote(sid, safe='')}/tasks")
+            listing = await client.request_json("GET", f"{base}/tasks")
             for item in listing.get("tasks") or []:
                 if item.get("task_id") == task_id:
                     last = item
                     break
+            if collect(await console_lines()):
+                quiet_at = _time.monotonic()
             if last and last.get("completed"):
-                await asyncio.sleep(float(args.get("settle_seconds") or 0.6))
-                listing = await client.request_json("GET", f"/api/sessions/{quote(sid, safe='')}/tasks")
+                completed_by = "task"
+                break
+            # 任务停在 status=sent 但已有新的控制台输出：以 console 文本兜底
+            if texts and quiet_at is not None and _time.monotonic() - quiet_at >= max(settle, 0.8):
+                completed_by = "console"
+                break
+
+        if completed_by:
+            await asyncio.sleep(settle)  # 再收一段尾部输出
+            try:
+                listing = await client.request_json("GET", f"{base}/tasks")
                 for item in listing.get("tasks") or []:
                     if item.get("task_id") == task_id:
                         last = item
                         break
-                break
+            except Exception:  # noqa: BLE001
+                pass
+            collect(await console_lines())
+
         out = dict(data) if isinstance(data, dict) else {"ok": True}
         out["task"] = last
-        out["output"] = (last or {}).get("output", "")
-        out["completed"] = bool((last or {}).get("completed"))
+        out["output"] = (last or {}).get("output") or "\n".join(texts)
+        out["completed"] = bool(completed_by)
+        out["completed_by"] = completed_by
+        if texts:
+            out["console"] = texts[-200:]
         return out
 
     tools.append(Tool(
@@ -525,6 +591,9 @@ def _build_tools() -> list[Tool]:
         description=(
             "在指定会话执行一行控制台命令（与 Web 控制台输入框完全一致：shell、powershell、"
             "文件、进程、注入、BOF、模块命令等都可以）。可选 wait_seconds 轮询任务直到完成并返回输出。"
+            "由于 Demon 的 Console 回包不带 TaskID（任务归因是启发式的），等待期间会同时轮询控制台："
+            "任务未标记完成但已有新输出时，用控制台文本兜底并把 completed 置为 true，"
+            "同时在 completed_by 标注来源（task / console）。"
         ),
         input_schema=_schema({
             "sid": _SID,

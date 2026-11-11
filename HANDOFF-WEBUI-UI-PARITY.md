@@ -1,5 +1,9 @@
 # 交接提示词：Havoc Web 控制台 —— UI 高保真复刻 Qt 客户端
 
+> **⚠ 已过时（2026-11-11）：Qt 客户端已从本仓库移除。** 本文引用的 `client/src`、`client/data`、
+> `./client/Havoc`、`logs/client-shots/` 均已不存在；UI 对照工作到此结束。
+> 现状以 [README.md](README.md) / [webui/README.md](webui/README.md) 为准。
+
 > 适用对象：下一个会话的 AI/开发者。工作目录 `/home/kali/桌面/Havoc`。
 > 只用于已获得明确书面授权的测试环境。**不要修改 Qt 客户端 / teamserver / 9901 投递链**，只改 `webui/`。
 

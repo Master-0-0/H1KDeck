@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""从 Havoc 客户端源码生成 webui/demon_commands.py。
+"""生成 webui/demon_commands.py。
 
-数据来源：
-  1. client/src/Havoc/Demon/Commands.cc 的 DemonCommandList（35 条静态命令）；
-  2. client/config.toml 的 [scripts].files（客户端启动时加载的 Python 模块）；
-  3. 这些模块通过 RegisterCommand / RegisterModule 注册的命令。
+Qt 客户端已从本仓库移除，命令表来源因此固化在 webui/reference/：
+  1. webui/reference/Commands.cc —— 上游 client/src/Havoc/Demon/Commands.cc 的快照
+     （DemonCommandList，35 条静态命令）；
+  2. webui/reference/client-config.toml —— 上游 client/config.toml 的快照，
+     [scripts].files 列出客户端启动时加载的 Python 模块；
+  3. 这些模块（仍在 havoc-src/client/Modules，Web 端复用）通过
+     RegisterCommand / RegisterModule 注册的命令。
+
+升级上游时：把新的 Commands.cc / config.toml 覆盖到 webui/reference/ 后重跑本脚本。
 
 用法：python3 webui/tools/gen_demon_commands.py
 """
@@ -20,7 +25,12 @@ import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-CLIENT = ROOT / "havoc-src" / "client"
+# 命令表来源（Qt 客户端已移除，快照保留在 webui/reference/）
+REFERENCE = ROOT / "webui" / "reference"
+COMMANDS_CC = REFERENCE / "Commands.cc"
+CLIENT_CONFIG = REFERENCE / "client-config.toml"
+# 模块脚本仍在 havoc-src/client/Modules（Web 端复用，不再属于 Qt 客户端）
+HAVOC_SRC = ROOT / "havoc-src"
 OUT = ROOT / "webui" / "demon_commands.py"
 
 RAW_RE = re.compile(r'^(?:u8)?R"(?P<delim>[^()]*)\((?P<body>.*)\)(?P=delim)"$', re.S)
@@ -163,7 +173,7 @@ def parse_obj(s: str, pos: int) -> tuple[dict, int]:
 
 
 def parse_static() -> list[dict]:
-    src = strip_comments((CLIENT / "src" / "Havoc" / "Demon" / "Commands.cc").read_text("utf-8"))
+    src = strip_comments(COMMANDS_CC.read_text("utf-8"))
     start = src.index("DemonCommandList = {")
     body_start = start + len("DemonCommandList = {")
     body = src[body_start:find_matching(src, body_start)]
@@ -214,7 +224,7 @@ def load_modules() -> tuple[list[dict], list[dict], list[str]]:
     sys.path.insert(0, str(ROOT / "webui" / "pysdk"))
     import havoc  # noqa: WPS433
 
-    configured = tomllib.loads((CLIENT / "config.toml").read_text("utf-8"))["scripts"]["files"]
+    configured = tomllib.loads(CLIENT_CONFIG.read_text("utf-8"))["scripts"]["files"]
     all_modules: list[list[str]] = []
 
     def record_module(*args, **kwargs):
@@ -224,7 +234,7 @@ def load_modules() -> tuple[list[dict], list[dict], list[str]]:
     rows: list[dict] = []
     scripts: list[str] = []
     for rel in configured:
-        path = CLIENT.parent / rel
+        path = HAVOC_SRC / rel
         scripts.append(str(path.relative_to(ROOT)))
         havoc.REGISTERED.clear()
         sys.path.insert(0, str(path.parent))
@@ -266,8 +276,9 @@ def main() -> int:
 
 生成器：webui/tools/gen_demon_commands.py
 数据来源：
-- client/src/Havoc/Demon/Commands.cc（DemonCommandList，35 条）
-- client/config.toml 中启动时加载的 15 个 Python 模块（RegisterCommand/RegisterModule）
+- webui/reference/Commands.cc（上游 DemonCommandList 快照，35 条）
+- webui/reference/client-config.toml 列出的 15 个 Python 模块
+  （脚本本体在 havoc-src/client/Modules，RegisterCommand/RegisterModule）
 
 数据只描述命令；数据包构造见 commands.py。
 """

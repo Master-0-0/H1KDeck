@@ -285,7 +285,7 @@ print_summary() {
     log ""
     log "Havoc 已就绪："
     log "  Web 控制台   http://$ip:$WEB_PORT/        （默认 admin / havoc1234）"
-    log "  Teamserver   wss://$ip:$TS_PORT/havoc/    （操作员 5pider / Neo）"
+    log "  Teamserver   wss://$ip:$TS_PORT/havoc/    （操作员 Neo，Qt 客户端已移除）"
     log "  暂存服务     http://$ip:$STAGER_PORT/"
     log ""
     log "  日志：logs/teamserver.log、logs/webui-console.log、logs/stager.log"

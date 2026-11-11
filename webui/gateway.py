@@ -895,6 +895,9 @@ class Gateway:
         task_id = task_id or f"{secrets.randbits(32):08X}"
         if plan is None:
             plan = linux_compat.plan(session, line)
+        if plan and plan.get("kind") == "error":
+            # Linux 会话上的 Windows 原生命令：不下发（agent 不会回包）
+            raise CommandError(plan.get("message") or linux_compat.unsupported_message(line))
         build_line = plan["line"] if plan else line
         built = build(ref, build_line, task_id, shell_utf8=self.shell_utf8)
         if plan:
@@ -997,6 +1000,17 @@ class Gateway:
             return web.json_response({"error": "invalid_command", "message": message}, status=400)
 
         plan = linux_compat.plan(session, line)
+        # Linux 会话 + Windows 原生命令：网关侧短路（agent 对这些 CommandID 不回包，
+        # 下发会让会话一直占满到超时）。口径与 agent 的 0x14 回显一致。
+        if plan and plan.get("kind") == "error":
+            message = plan.get("message") or linux_compat.unsupported_message(line)
+            self.state.console_append(sid, "prompt", line)
+            self.state.console_append(sid, "error", message)
+            self.state.add_event(f"[{request['user']}] 在 {sid} 执行（不支持）：{line}",
+                                 "warn", source="operator")
+            return web.json_response({"error": "not_supported", "message": message,
+                                      "platform": "linux",
+                                      "command": argv[0] if argv else ""}, status=400)
         matched = None if plan else self._match_python_command(line)
         if matched:
             rest = line[len(matched["key"]):].strip()

@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import asyncio
+import pathlib
 import subprocess
 import sys
 import time
@@ -23,7 +24,7 @@ import aiohttp
 
 BASE = "http://127.0.0.1:8081"
 STAGER = "http://127.0.0.1:9901/health"
-HERE = __file__.rsplit("/", 1)[0]
+HERE = pathlib.Path(__file__).resolve().parent
 RESULTS: list[tuple[str, bool, str]] = []
 
 
@@ -71,7 +72,11 @@ async def main() -> int:
 
         healthy = [s for s in sessions if s.get("health") == "healthy"]
         record("存在健康会话", len(healthy) >= 1, f"{len(healthy)} 个在线")
-        demon = (healthy or sessions)[0]["id"]
+        # 本脚本的 whoami / net user 断言是 Windows 语义；显式挑一个健康 Windows 会话，
+        # 避免快照顺序变化时选中 Linux 会话（Linux 由 linux_agent_test 覆盖）。
+        windows = [s for s in healthy
+                   if "windows" in f"{s.get('platform') or ''} {s.get('os') or ''}".lower()]
+        demon = (windows or healthy or sessions)[0]["id"]
 
         fresh = all(abs(time.time() - s["last_seen_ts"]) < 3600 for s in healthy if s.get("last_seen_ts"))
         record("心跳时间戳有效（1 小时内）", fresh)
@@ -107,9 +112,9 @@ async def main() -> int:
 
         # 8. 网关重启 + 登录态
         print("--- 重启网关 ---")
-        subprocess.run(["bash", f"{HERE}/stop-webui.sh"], check=False, stdout=subprocess.DEVNULL)
+        subprocess.run(["bash", str(HERE / "stop-webui.sh")], check=False, stdout=subprocess.DEVNULL)
         await asyncio.sleep(1.5)
-        subprocess.run(["bash", f"{HERE}/start-webui.sh"], check=False, stdout=subprocess.DEVNULL)
+        subprocess.run(["bash", str(HERE / "start-webui.sh")], check=False, stdout=subprocess.DEVNULL)
         ok_reconnect = False
         for _ in range(15):
             await asyncio.sleep(1.5)

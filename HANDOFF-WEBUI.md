@@ -1,5 +1,9 @@
 # 交接任务：给 Havoc 0.7 做 Web 控制台（浏览器替代 Qt 客户端）
 
+> **⚠ 已过时（2026-11-11）：Qt 客户端已从本仓库移除。** 文中启动 `./client/Havoc`、
+> 截图对照、客户端编译等步骤均已失效；`havoc-src/client/` 现在只保留 `Modules`（Web 端模块命令库）。
+> 现状与启动方式以 [README.md](README.md) / [webui/README.md](webui/README.md) 为准。
+
 > 目标读者：下一个会话的 AI/开发者。本文已经过现场侦察，协议结论可直接用。
 > 仅用于已获得明确授权的测试环境。
 
