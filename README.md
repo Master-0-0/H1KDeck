@@ -22,6 +22,10 @@ Havoc Framework 的浏览器控制台实现：用浏览器替代 Qt 客户端，
 
 ## 1. 功能截图
 
+> **说明：本章截图全部来自本仓库的 Web 控制台（浏览器界面），不是 Qt 客户端。**
+> 两者 UI 为刻意对齐而风格接近，但属于两个独立程序；Qt 客户端截图位于 `logs/client-shots/`，
+> 该目录不纳入版本库。
+
 ### 1.1 会话总览
 
 左侧为会话表（ID / 外部地址 / 内部地址 / 用户 / 计算机 / 系统 / 进程 / PID / 最后心跳 / 状态），
@@ -98,7 +102,9 @@ Python 页可查看源码、加载脚本并注册命令，Python 控制台为持
 
 ![会话右键菜单](webui/docs/session-menu.png)
 
-> 全部截图位于 `webui/docs/`，更多对比图（与 Qt 客户端逐屏对照）见 `webui/docs/ui-compare-*.png`。
+> 全部截图位于 `webui/docs/`，内容均为 Web 控制台界面。与 Qt 客户端的逐屏对照图见
+> `webui/docs/ui-compare-*.png`（每张图上方标注 `WEB`、下方标注 `CLIENT`，上为 Web 控制台、
+> 下为 Qt 客户端）；`ui-parity-sheet.png` 为 13 屏功能总览拼图（同为 Web 控制台）。
 
 ---
 
