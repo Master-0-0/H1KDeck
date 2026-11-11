@@ -1,0 +1,138 @@
+== Kali -> 三层目标 ==
+
+--- 10.10.10.10 ---
+PING 10.10.10.10 (10.10.10.10) 56(84) bytes of data.
+64 bytes from 10.10.10.10: icmp_seq=1 ttl=63 time=1.32 ms
+64 bytes from 10.10.10.10: icmp_seq=2 ttl=63 time=0.106 ms
+
+--- 10.10.10.10 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+rtt min/avg/max/mdev = 0.106/0.711/1.316/0.605 ms
+
+--- 10.10.20.10 ---
+PING 10.10.20.10 (10.10.20.10) 56(84) bytes of data.
+64 bytes from 10.10.20.10: icmp_seq=1 ttl=62 time=0.352 ms
+64 bytes from 10.10.20.10: icmp_seq=2 ttl=62 time=0.107 ms
+
+--- 10.10.20.10 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1004ms
+rtt min/avg/max/mdev = 0.107/0.229/0.352/0.122 ms
+
+--- 10.10.30.10 ---
+PING 10.10.30.10 (10.10.30.10) 56(84) bytes of data.
+64 bytes from 10.10.30.10: icmp_seq=1 ttl=61 time=0.383 ms
+64 bytes from 10.10.30.10: icmp_seq=2 ttl=61 time=0.399 ms
+
+--- 10.10.30.10 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1022ms
+rtt min/avg/max/mdev = 0.383/0.391/0.399/0.008 ms
+
+== execd 命令通道 ==
+
+--- 10.10.10.10:2222 ---
+[execd] 10.10.0.1:42728 run: hostname; ip -brief addr; ip route
+bogon
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+eth0@if15        UP             10.10.10.10/24 fe80::3cf3:efff:fe2f:8b97/64 
+default via 10.10.10.1 dev eth0 
+10.10.10.0/24 dev eth0 proto kernel scope link src 10.10.10.10 
+
+[execd] rc=0 elapsed=0.03s
+
+--- 10.10.20.10:2222 ---
+[execd] 10.10.0.1:57580 run: hostname; ip -brief addr; ip route
+bogon
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+eth0@if17        UP             10.10.20.10/24 fe80::ac16:dbff:fee3:7805/64 
+default via 10.10.20.1 dev eth0 
+10.10.20.0/24 dev eth0 proto kernel scope link src 10.10.20.10 
+
+[execd] rc=0 elapsed=0.02s
+
+--- 10.10.30.10:2222 ---
+[execd] 10.10.0.1:48402 run: hostname; ip -brief addr; ip route
+bogon
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+eth0@if19        UP             10.10.30.10/24 fe80::a49b:7aff:fe7a:b4d9/64 
+default via 10.10.30.1 dev eth0 
+10.10.30.0/24 dev eth0 proto kernel scope link src 10.10.30.10 
+
+[execd] rc=0 elapsed=0.01s
+
+== 各命名空间地址 ==
+
+--- hlab-hop1 ---
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+br1              UP             10.10.10.1/24 fe80::609d:82ff:feeb:1cfc/64 
+eth0@if9         UP             10.10.0.2/24 fe80::6c7c:66ff:fe9f:2970/64 
+eth1@if10        UP             fe80::30b8:c4ff:fe93:bfc8/64 
+eth2@if14        UP             fe80::8828:11ff:fed2:8b1a/64 
+default via 10.10.0.1 dev eth0 
+10.10.0.0/24 dev eth0 proto kernel scope link src 10.10.0.2 
+10.10.10.0/24 dev br1 proto kernel scope link src 10.10.10.1 
+10.10.20.0/24 via 10.10.10.2 dev br1 
+10.10.30.0/24 via 10.10.10.2 dev br1 
+
+--- hlab-hop2 ---
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+br2              UP             10.10.20.1/24 fe80::f4f5:37ff:fe26:a564/64 
+eth0@if11        UP             10.10.10.2/24 fe80::7067:98ff:fe3e:bad7/64 
+eth1@if12        UP             fe80::fcb8:ffff:fe17:e22d/64 
+eth2@if16        UP             fe80::445b:49ff:fecc:31f3/64 
+default via 10.10.10.1 dev eth0 
+10.10.10.0/24 dev eth0 proto kernel scope link src 10.10.10.2 
+10.10.20.0/24 dev br2 proto kernel scope link src 10.10.20.1 
+10.10.30.0/24 via 10.10.20.2 dev br2 
+
+--- hlab-hop3 ---
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+br3              UP             10.10.30.1/24 fe80::744c:9dff:fe89:d83c/64 
+eth0@if13        UP             10.10.20.2/24 fe80::6053:59ff:fee7:f3f1/64 
+eth1@if18        UP             fe80::f4ec:a6ff:fe1e:8981/64 
+default via 10.10.20.1 dev eth0 
+10.10.20.0/24 dev eth0 proto kernel scope link src 10.10.20.2 
+10.10.30.0/24 dev br3 proto kernel scope link src 10.10.30.1 
+
+--- hlab-t1 ---
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+eth0@if15        UP             10.10.10.10/24 fe80::3cf3:efff:fe2f:8b97/64 
+default via 10.10.10.1 dev eth0 
+10.10.10.0/24 dev eth0 proto kernel scope link src 10.10.10.10 
+
+--- hlab-t2 ---
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+eth0@if17        UP             10.10.20.10/24 fe80::ac16:dbff:fee3:7805/64 
+default via 10.10.20.1 dev eth0 
+10.10.20.0/24 dev eth0 proto kernel scope link src 10.10.20.10 
+
+--- hlab-t3 ---
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+eth0@if19        UP             10.10.30.10/24 fe80::a49b:7aff:fe7a:b4d9/64 
+default via 10.10.30.1 dev eth0 
+10.10.30.0/24 dev eth0 proto kernel scope link src 10.10.30.10 
+
+== 层间路由（t1 -> t3 / t3 -> t1）==
+10.10.30.10 via 10.10.10.1 dev eth0 src 10.10.10.10 uid 0 
+    cache 
+10.10.10.10 via 10.10.30.1 dev eth0 src 10.10.30.10 uid 0 
+    cache 
+
+--- t1 -> t3 ping ---
+PING 10.10.30.10 (10.10.30.10) 56(84) bytes of data.
+From 10.10.10.1: icmp_seq=1 Redirect Host(New nexthop: 10.10.10.2)
+64 bytes from 10.10.30.10: icmp_seq=1 ttl=62 time=1.10 ms
+From 10.10.10.1: icmp_seq=2 Redirect Host(New nexthop: 10.10.10.2)
+64 bytes from 10.10.30.10: icmp_seq=2 ttl=62 time=0.161 ms
+
+--- 10.10.30.10 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1001ms
+rtt min/avg/max/mdev = 0.161/0.628/1.096/0.467 ms
+
+--- t3 -> t1 ping ---
+PING 10.10.10.10 (10.10.10.10) 56(84) bytes of data.
+64 bytes from 10.10.10.10: icmp_seq=1 ttl=61 time=0.074 ms
+64 bytes from 10.10.10.10: icmp_seq=2 ttl=61 time=0.139 ms
+
+--- 10.10.10.10 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1002ms
+rtt min/avg/max/mdev = 0.074/0.106/0.139/0.032 ms

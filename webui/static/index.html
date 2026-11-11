@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Havoc</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%231a1b1d'/><path d='M9 8v16M9 16h9M18 8v16' stroke='%234c9aff' stroke-width='2.6' stroke-linecap='round'/></svg>">
+</head>
+<body>
+
+<!-- 登录（对齐客户端 Connect 对话框：500x260） -->
+<div id="login-view" class="login-view">
+  <div class="login-box">
+    <button id="login-new-profile" class="login-new" type="button">新建配置</button>
+    <div class="login-header">连接到 Havoc 团队服务器</div>
+    <div class="login-profiles">
+      <div class="login-profile selected" id="login-profile">WEB</div>
+    </div>
+    <form id="login-form" class="login-form" autocomplete="off">
+      <label class="lbl" for="login-name">名称：</label>
+      <input class="input" id="login-name" type="text" value="WEB" readonly>
+      <label class="lbl" for="login-host">主机：</label>
+      <input class="input" id="login-host" type="text" readonly>
+      <label class="lbl" for="login-port">端口：</label>
+      <input class="input" id="login-port" type="text" readonly>
+      <label class="lbl" for="login-user">用户：</label>
+      <input class="input" id="login-user" type="text" value="admin" autocomplete="username" required>
+      <label class="lbl" for="login-pass">密码：</label>
+      <input class="input" id="login-pass" type="password" autocomplete="current-password" required>
+      <button id="login-btn" class="login-connect" type="submit">连接</button>
+      <div id="login-error" class="login-error hidden"></div>
+    </form>
+  </div>
+</div>
+
+<!-- 主界面 -->
+<div id="app-view" class="app hidden">
+  <div class="menubar">
+    <div class="menu" data-menu="havoc">Havoc</div>
+    <div class="menu" data-menu="view">视图</div>
+    <div class="menu" data-menu="attack">攻击</div>
+    <div class="menu" data-menu="mcp">MCP</div>
+    <div class="menu" data-menu="scripts">脚本</div>
+    <div class="menu" data-menu="help">帮助</div>
+  </div>
+
+  <div class="workspace">
+    <div class="main-split" id="main-split">
+      <div class="sessions-pane">
+        <table class="session-table">
+          <thead>
+            <tr>
+              <th>ID</th><th>外部地址</th><th>内部地址</th><th>用户</th><th>计算机</th>
+              <th>系统</th><th>进程</th><th>PID</th><th>最后心跳</th><th>状态</th>
+            </tr>
+          </thead>
+          <tbody id="sessions-body"></tbody>
+        </table>
+        <div id="sessions-empty" class="empty hidden">暂无会话</div>
+      </div>
+      <section id="graph-pane" class="graph-top hidden"></section>
+      <div class="v-splitter" id="v-splitter" title="拖动调整宽度"></div>
+      <aside id="event-dock" class="event-dock">
+        <div class="dock-tabbar">
+          <div class="dock-tab">
+            <span class="label">事件查看器</span>
+            <button id="event-dock-close" class="tab-close" title="关闭">×</button>
+          </div>
+        </div>
+        <div class="event-body">
+          <div id="event-list" class="event-list"></div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="splitter" id="splitter" title="拖动调整高度"></div>
+
+    <div class="bottom-dock" id="bottom-dock">
+      <div class="tabbar-wrap">
+          <button class="tab-scroll left hidden" id="tab-scroll-left" type="button" title="向左滚动">‹</button>
+          <div class="tabbar" id="tabbar"></div>
+          <button class="tab-scroll right hidden" id="tab-scroll-right" type="button" title="向右滚动">›</button>
+        </div>
+      <div class="tab-content" id="tab-content"></div>
+    </div>
+  </div>
+</div>
+
+<div id="tooltip" class="tooltip hidden"></div>
+<div id="menu-popup" class="menu-popup hidden"></div>
+<div id="submenu-popup" class="menu-popup hidden"></div>
+<div id="context-menu" class="context-menu hidden"></div>
+<div id="modal-root" class="modal-root hidden"></div>
+<div id="toasts" class="toasts"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
