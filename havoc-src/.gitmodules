@@ -1,0 +1,2 @@
+# Qt 客户端已移除（保留 client/Modules 供 Web 端复用）。
+# 上游的 client/external/{spdlog,json,toml} 三个 submodule 一并不再需要。

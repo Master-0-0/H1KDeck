@@ -149,11 +149,11 @@ BOF 回调等接口，注册的命令可直接在会话控制台调用。
 
 ### 2.1 前置条件
 
-本仓库只跟踪 Web 控制台、实验脚本与启停脚本；以下内容体积大或为独立仓库，**未纳入版本库**，需自行准备：
+本仓库跟踪 Web 控制台、实验脚本、启停脚本与 `havoc-src/` 源码；以下内容体积大或为运行数据，**未纳入版本库**，需自行准备：
 
 | 组件 | 位置 | 说明 |
 | --- | --- | --- |
-| Havoc 源码与二进制 | `havoc-src/` | 独立 git 仓库，需编译出 `havoc-src/havoc`（Teamserver）；Qt 客户端已移除，`client/Modules` 保留给 Web 端复用 |
+| Havoc 源码与二进制 | `havoc-src/` | 源码已并入本仓库（原嵌套 git 仓库已移除）；需自行编译出 `havoc-src/havoc`（Teamserver）；Qt 客户端已移除，`client/Modules`（Python 模块 + BOF 对象）已入库供 Web 端复用 |
 | 本地工具链 | `toolchain/` | Go、CMake、Python venv，仅在重新编译时需要（Qt5 已随客户端移除） |
 | 运行数据 | `webui/data/`、`webui/run/` | 战利品、载荷、MCP 令牌与密钥，首次启动自动生成 |
 | 载荷产物 | `payloads-out/` | 一键上线投递目录 |

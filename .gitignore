@@ -1,5 +1,4 @@
-# 嵌套仓库：havoc-src 自带独立的 .git
-/havoc-src/
+# havoc-src 已并入本仓库（原嵌套 git 仓库已移除，仅保留源码与 client/Modules）
 
 # 工具链与依赖（体积大，可按需重新获取）
 /toolchain/
@@ -33,6 +32,13 @@ venv/
 *.so
 *.bin
 *.o
+
+# havoc-src/client/Modules 是 Web 端模块命令的运行时依赖：
+# 其中的 BOF 对象（.o）与 .x64.dll 是脚本调用的载荷，必须入库
+!havoc-src/client/Modules/**/*.o
+!havoc-src/client/Modules/**/*.dll
+# 载荷构建的预编译 shellcode（teamserver builder 读取）
+!havoc-src/payloads/*.bin
 
 # 编辑器与系统文件
 .DS_Store

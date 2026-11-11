@@ -16,9 +16,9 @@
 
 ```
 /home/kali/桌面/Havoc/
-├── havoc-src/                 # 源码仓库（git clone；Qt 客户端已移除）
-│   ├── havoc                  # 编译产物：Teamserver（Go，19 MB）
-│   ├── client/Modules/        # Python 模块 + BOF 对象文件（Web 端复用，勿删）
+├── havoc-src/                 # 源码（已并入本仓库；Qt 客户端已移除）
+│   ├── havoc                  # 编译产物：Teamserver（Go，19 MB，未入库）
+│   ├── client/Modules/        # Python 模块 + BOF 对象文件（已入库，Web 端复用）
 │   ├── profiles/havoc.yaotl   # 默认配置（监听 0.0.0.0:40056）
 │   └── data/                  # 运行数据、证书、数据库、交叉编译器包装器
 ├── toolchain/                 # 本地工具链（未写入系统，全部在用户空间）

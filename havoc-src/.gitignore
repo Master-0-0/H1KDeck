@@ -1,0 +1,34 @@
+# ignore .idea
+*/.idea/
+
+# ignore cmake generated stuff
+Client/Build
+**/cmake-build-debug/
+
+# dont commit your loot
+Teamserver/data/loot/
+
+# dont commit your secrets
+Client/Data/database.db
+
+# ignore go stuff
+Teamserver/go.sum
+
+# ignore compiled binaries
+Client/Havoc
+Teamserver/teamserver
+
+# ignore MUSL C Compiler stuff
+Teamserver/data/x86_64-w64-mingw32-cross/
+
+# ignore havoc binary
+havoc
+
+# ignore data directory
+data/
+
+# ignore client directories
+# 注：client/Modules 不再忽略——它是 Web 控制台模块命令的运行时依赖，
+# 已随源码一并入库（原嵌套 git 仓库已移除）。
+client/Build/
+client/Havoc

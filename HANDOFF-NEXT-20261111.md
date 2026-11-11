@@ -15,7 +15,8 @@
 
 - **Qt 客户端已移除**：`havoc-src/client/` 只剩 `Modules/`（Python 模块 + 156 个 BOF `.o`）。**这是 Web 端 77 条模块命令的运行时来源，绝对不能删。**
 - 移除前的完整备份：`backup/qt-client-20261111.tar.gz`（含改动过的 QSS/中文界面源码）；Qt5 前缀可随时用 `toolchain/debs/*.deb` 重新解包。
-- `havoc-src` 已有本地提交 `362146f`（删 client 本体、改 makefile、删 `havoc client` 子命令、profile 只留 `Neo`）。**不要再回滚或重加 `5pider`。**
+- `havoc-src` 曾以嵌套 git 仓库存在（本地提交 `362146f`：删 client 本体、改 makefile、删 `havoc client` 子命令、profile 只留 `Neo`）。**不要再回滚或重加 `5pider`。**
+  **2026-11-11 更新：嵌套仓库已删除，`havoc-src` 源码（含 `client/Modules`）已并入本仓库；原 `362146f` 的补丁留档在 `backup/havoc-src-history/`。**
 - 命令表来源固化在 `webui/reference/`（`Commands.cc`、`client-config.toml`），生成器：`python3 webui/tools/gen_demon_commands.py`。help 表口径：**108 行 = 35 静态 + 73 模块**；`REGISTERED_COMMANDS` 定义 77 条（5 条子命令不单列，`jump-exec` 模块组单列一行）。
 - 服务与凭据（当前在线）：
 
