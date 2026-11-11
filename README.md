@@ -1,8 +1,20 @@
-# Havoc Web 控制台
+# HavocDeck
 
-Havoc Framework 的 Web 控制台：在浏览器里完成监听器、载荷生成、会话管理、命令执行、文件与
-进程操作、战利品查看和团队协作。网关把浏览器请求转成 Teamserver 的 JSON over WebSocket 协议，
-因此无需安装 Qt 客户端，也不必修改 Teamserver / Demon。
+**Havoc C2 的浏览器作战台。** 不装 Qt 客户端，在浏览器里完成监听器、载荷生成、会话管理、
+命令执行、文件与进程操作、战利品查看和团队协作。网关把浏览器请求转成 Teamserver 的
+JSON over WebSocket 协议，因此不必修改 Teamserver / Demon；内置 MCP 网关，AI Agent 也能直接驱动。
+
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+[![Havoc](https://img.shields.io/badge/Havoc-0.7%20Bites%20The%20Dust-8A2BE2.svg)](https://github.com/HavocFramework/Havoc)
+[![Python](https://img.shields.io/badge/python-3.11%2B-3776AB.svg)](webui/requirements.txt)
+
+- **零客户端**：浏览器即控制台，Qt 客户端的会话表、控制台、文件、进程、监听器、载荷、战利品、
+  拓扑图、扩展商店、脚本控制台等视图全部复刻，深色主题逐像素对齐。
+- **Agent 原生**：内置 MCP 服务（69 工具 / 15 资源 / 3 提示词），Claude、Cursor 等客户端可直接
+  列会话、下发命令、读写目标文件，与浏览器共享同一份状态、权限与审计。
+- **传输可选**：原生 HTTP/HTTPS/SMB/External 之外，另有 TCP / KCP / UDP / WS / DNS / DoH / DoT / OSS
+  八种加密传输（AES-256-GCM）与配套 Go 中继器，原生 UDP 打不通的网络也能上线。
+- **一条命令**：`./start-all.sh` 幂等拉起 Teamserver、Web 控制台与暂存服务，带端口就绪检查与一键停止。
 
 > **2026-11-11 变更：Qt 客户端已从本仓库移除**，只保留 Teamserver + Web 控制台。
 > `havoc-src/client/Modules`（Python 模块 + BOF 对象文件）作为 Web 端的模块命令库保留，
@@ -10,6 +22,8 @@ Havoc Framework 的 Web 控制台：在浏览器里完成监听器、载荷生�
 > 命令表来源固化在 `webui/reference/`，移除前的 Qt 客户端完整备份见 `backup/qt-client-20261111.tar.gz`。
 
 上游项目：[HavocFramework/Havoc](https://github.com/HavocFramework/Havoc)（部署版本 **0.7 / Bites The Dust**）。
+本仓库按 **GPL-3.0** 分发（见 [LICENSE](LICENSE)）；相对上游的改动：移除 Qt 客户端、新增 `webui/` 网关与前端、
+`stager/` 暂存服务、启停脚本与测试套件，Teamserver 与 Demon 的协议未改动。
 
 ![Web 控制台主界面](webui/docs/main.png)
 
